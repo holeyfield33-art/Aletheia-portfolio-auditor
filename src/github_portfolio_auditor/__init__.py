@@ -1,1 +1,1 @@
-"""GitHub Portfolio Auditor package."""
+"""GitHub Portfolio Auditor - Phase 1 ready."""
