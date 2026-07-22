@@ -24,11 +24,12 @@ class GitHubClient:
     
     def get_repo_metadata(self, repo):
         """Extract key metadata."""
+        languages = {k: v for k, v in repo.get_languages().items() if k != "url"}
         return {
             "name": repo.full_name,
             "stars": repo.stargazers_count,
             "forks": repo.forks_count,
-            "languages": repo.get_languages(),
+            "languages": languages,
             "topics": repo.get_topics(),
             "license": repo.license.name if repo.license else None,
             "last_commit": repo.pushed_at,
