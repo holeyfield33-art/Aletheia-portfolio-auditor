@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
+.env
 *.egg-info/
 github_cache.sqlite
 reports/
+*.log
 .venv/
