@@ -11,6 +11,8 @@ dependencies = [
     "pydantic>=2",
     "requests-cache",
     "markdown",
+    "anthropic>=0.34",
+    "jinja2>=3.1",
 ]
 
 [project.scripts]
@@ -18,3 +20,6 @@ gha = "github_portfolio_auditor.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+github_portfolio_auditor = ["templates/*.html.j2"]

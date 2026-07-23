@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 
 from .client import GitHubClient
+from .analyzer import PortfolioAnalyzer
+from .report import render_report
 
 app = typer.Typer()
 console = Console()
@@ -51,6 +53,48 @@ def scan(
     
     console.print(f"[bold green]✅ Phase 1 Discovery complete![/] Reports saved to {output_dir}")
     console.print(f"Key file: {report_file}")
+
+@app.command()
+def analyze(
+    input: str = typer.Option("reports/portfolio.json", help="Path to portfolio.json from `gha scan`"),
+    output: str = typer.Option("reports", help="Output directory"),
+    anthropic_key: str = typer.Option(None, envvar="ANTHROPIC_API_KEY", help="Anthropic API key for AI summaries"),
+):
+    """Phase 2: Analysis - score repos, generate AI summaries, and build a chart-based HTML report."""
+    input_path = Path(input)
+    if not input_path.exists():
+        console.print(f"[bold red]No portfolio data found at {input_path}.[/] Run `gha scan` first.")
+        raise typer.Exit(code=1)
+
+    with open(input_path) as f:
+        portfolio = json.load(f)
+    repos = portfolio["repositories"]
+
+    if not anthropic_key:
+        console.print("[yellow]No ANTHROPIC_API_KEY set - summaries will use a plain metadata fallback instead of AI.[/]")
+
+    analyzer = PortfolioAnalyzer(anthropic_api_key=anthropic_key)
+
+    output_dir = Path(output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
+        task = progress.add_task("Scoring repos and generating summaries...", total=None)
+        analysis = analyzer.analyze_portfolio(repos)
+        progress.update(task, completed=True)
+
+    analysis_file = output_dir / "analysis.json"
+    with open(analysis_file, "w") as f:
+        json.dump(analysis, f, indent=2, default=str)
+
+    report_file = render_report(analysis, output_dir / "report.html")
+
+    insights = analysis["insights"]
+    console.print(f"[bold green]✅ Phase 2 Analysis complete![/]")
+    console.print(f"Avg quality score: {insights['avg_quality_score']} | License coverage: {insights['license_coverage_pct']}%")
+    console.print(f"Stale repos: {len(insights['stale_repos'])} | Archived: {len(insights['archived_repos'])}")
+    console.print(f"Report: {report_file}")
+
 
 def main():
     app()
