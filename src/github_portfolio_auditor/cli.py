@@ -52,5 +52,8 @@ def scan(
     console.print(f"[bold green]✅ Phase 1 Discovery complete![/] Reports saved to {output_dir}")
     console.print(f"Key file: {report_file}")
 
-if __name__ == "__main__":
+def main():
     app()
+
+if __name__ == "__main__":
+    main()
