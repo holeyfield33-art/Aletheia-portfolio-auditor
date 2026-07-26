@@ -70,7 +70,8 @@ Installing the other two tools is optional — the auditor works standalone.
 - Repository discovery and metadata (`gha scan`)
 - Per-repo quality scoring (license, description, topics, contributors,
   releases, activity)
-- One-sentence AI repo summaries (Anthropic API, with a plain metadata
+- One-sentence AI repo summaries (Anthropic by default, or any
+  OpenAI-compatible endpoint via `--provider openai`, with a plain metadata
   fallback if no key is set)
 - Cross-repo insights: license coverage, stale/archived repos, repos sharing
   a dominant language
@@ -93,6 +94,26 @@ gha analyze                         # writes reports/analysis.json + report.html
 ```
 
 Run `gha scan --help` or `gha analyze --help` for all options.
+
+### LLM providers for AI summaries
+
+`gha analyze` mirrors [The Lie Detector](https://github.com/holeyfield33-art/Lie-Detector)'s
+provider flags and env vars, so one `.env` configures the whole toolchain:
+
+```bash
+# Anthropic (default): uses ANTHROPIC_API_KEY
+gha analyze
+
+# Any OpenAI-compatible endpoint (OpenAI, Featherless, OpenRouter, local llama.cpp):
+pip install -e ".[openai]"
+gha analyze --provider openai --base-url https://api.featherless.ai/v1 --model <model-id>
+```
+
+The OpenAI provider reads `OPENAI_API_KEY` or `FEATHERLESS_API_KEY`, and
+`--base-url` can also come from `OPENAI_BASE_URL`. With no credential for the
+chosen provider, summaries fall back to a plain metadata sentence and are
+flagged as not AI-generated — never faked. A failed API call mid-scan logs a
+warning and falls back for that repo instead of aborting the run.
 
 ## Development
 
