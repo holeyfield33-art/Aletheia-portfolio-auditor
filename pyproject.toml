@@ -16,6 +16,9 @@ dependencies = [
     "jinja2>=3.1",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
 [project.scripts]
 gha = "github_portfolio_auditor.cli:main"
 aletheia = "github_portfolio_auditor.aletheia:main"

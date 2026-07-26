@@ -29,8 +29,8 @@ different questions about a codebase:
 ```
 
 1. **Aletheia portfolio auditor** (this repo) — walks your whole account:
-   repository discovery, per-repo analysis (docs, stack, CI/CD, security),
-   AI summaries, cross-repo insights, quality scoring, and action plans.
+   repository discovery, per-repo quality scoring, AI summaries, and
+   cross-repo insights, rendered as an HTML dashboard.
 2. [**vibe-check**](https://github.com/holeyfield33-art/vibe-check) — a
    zero-dependency, offline scanner that flags the debt AI-assisted coding
    leaves behind (syntax errors, undeclared imports, typosquats, duplicated
@@ -67,14 +67,19 @@ Installing the other two tools is optional — the auditor works standalone.
 
 ## Auditor features
 
-- Repository discovery and metadata for the whole account
-- Per-repo analysis: docs, stack, CI/CD, security posture
-- Code intelligence with AI summaries (Anthropic API key optional —
-  falls back to plain metadata summaries without one)
-- Cross-repo insights: duplicates, merge candidates, stale and archived repos
-- Quality scoring, license coverage, and per-repo action plans
-- Chart-based HTML report plus raw JSON output
-- Incremental scanning with caching
+- Repository discovery and metadata (`gha scan`)
+- Per-repo quality scoring (license, description, topics, contributors,
+  releases, activity)
+- One-sentence AI repo summaries (Anthropic API, with a plain metadata
+  fallback if no key is set)
+- Cross-repo insights: license coverage, stale/archived repos, repos sharing
+  a dominant language
+- Self-contained HTML dashboard report (JSON output also available:
+  `portfolio.json`, `analysis.json`)
+
+Not yet implemented (do not rely on these): CI/CD or security analysis,
+merge/dedupe suggestions, action-plan generation, PDF export, and incremental
+(cache-based) scanning - the `--incremental` flag is currently a no-op.
 
 ## Setup
 
@@ -87,7 +92,17 @@ gha scan                            # writes reports/portfolio.json
 gha analyze                         # writes reports/analysis.json + report.html
 ```
 
-See [docs/architecture.md](docs/architecture.md) for internals.
+Run `gha scan --help` or `gha analyze --help` for all options.
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+See [docs/architecture.md](docs/architecture.md) for internals, and
+[AUDIT.md](AUDIT.md) for the pre-launch audit log.
 
 ## License
 

@@ -62,16 +62,21 @@ class PortfolioAnalyzer:
         last_commit = repo.get("last_commit")
         days_since_push = None
         if last_commit:
-            pushed = last_commit if isinstance(last_commit, datetime) else datetime.fromisoformat(str(last_commit))
-            if pushed.tzinfo is None:
-                pushed = pushed.replace(tzinfo=timezone.utc)
-            days_since_push = (datetime.now(timezone.utc) - pushed).days
-            if days_since_push <= 30:
-                score += 20
-            elif days_since_push <= STALE_DAYS:
-                score += 10
-            else:
-                notes.append(f"Stale - no commits in {days_since_push} days")
+            try:
+                pushed = last_commit if isinstance(last_commit, datetime) else datetime.fromisoformat(str(last_commit))
+            except ValueError:
+                notes.append(f"Unrecognized last_commit value: {last_commit!r}")
+                pushed = None
+            if pushed is not None:
+                if pushed.tzinfo is None:
+                    pushed = pushed.replace(tzinfo=timezone.utc)
+                days_since_push = (datetime.now(timezone.utc) - pushed).days
+                if days_since_push <= 30:
+                    score += 20
+                elif days_since_push <= STALE_DAYS:
+                    score += 10
+                else:
+                    notes.append(f"Stale - no commits in {days_since_push} days")
 
         if repo.get("is_archived"):
             notes.append("Archived")
