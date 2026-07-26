@@ -6,24 +6,34 @@ quality scores, AI-generated summaries, and cross-repo portfolio insights.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
-import anthropic
+from .providers import AnthropicSummaryClient, SummaryClient
 
-# Cheap/fast model - summaries are short, high-volume (one call per repo),
-# so we don't need a top-tier model here.
-SUMMARY_MODEL = "claude-haiku-4-5-20251001"
+log = logging.getLogger("github_portfolio_auditor.analyzer")
 
 STALE_DAYS = 180  # repos with no push in this many days are flagged "stale"
 
 
 class PortfolioAnalyzer:
-    def __init__(self, anthropic_api_key: str | None = None):
-        """anthropic_api_key may be None - AI summaries are skipped (not faked)
-        if no key is available, so callers can tell the difference between a
-        real summary and a fallback."""
-        self.client = anthropic.Anthropic(api_key=anthropic_api_key) if anthropic_api_key else None
+    def __init__(
+        self,
+        anthropic_api_key: str | None = None,
+        client: SummaryClient | None = None,
+    ):
+        """Both arguments may be None - AI summaries are skipped (not faked)
+        without a client, so callers can tell the difference between a real
+        summary and a fallback. ``client`` takes precedence and can be any
+        provider from ``providers.build_summary_client``; ``anthropic_api_key``
+        is kept for backward compatibility."""
+        if client is not None:
+            self.client = client
+        elif anthropic_api_key:
+            self.client = AnthropicSummaryClient(api_key=anthropic_api_key)
+        else:
+            self.client = None
 
     def score_repo(self, repo: dict[str, Any]) -> dict[str, Any]:
         """Heuristic quality score (0-100) from metadata we already collected
@@ -90,16 +100,18 @@ class PortfolioAnalyzer:
             "is_stale": (days_since_push or 0) > STALE_DAYS,
         }
 
+    @staticmethod
+    def _fallback_summary(repo: dict[str, Any]) -> str:
+        langs = ", ".join(list(repo.get("languages", {}).keys())[:3]) or "unknown stack"
+        return f"{repo['name']}: {repo.get('description') or 'no description'} ({langs})."
+
     def summarize_repo(self, repo: dict[str, Any]) -> tuple[str, bool]:
         """Returns (summary_text, is_ai_generated). Falls back to a plain
-        metadata-derived sentence if no API key is configured, rather than
-        silently pretending it's an AI summary."""
+        metadata-derived sentence if no client is configured or the API call
+        fails, rather than silently pretending it's an AI summary - and a
+        single failed call never aborts the rest of the portfolio."""
         if self.client is None:
-            langs = ", ".join(list(repo.get("languages", {}).keys())[:3]) or "unknown stack"
-            return (
-                f"{repo['name']}: {repo.get('description') or 'no description'} ({langs}).",
-                False,
-            )
+            return self._fallback_summary(repo), False
 
         prompt = (
             "Write a single, plain-English sentence (max 30 words) summarizing what this "
@@ -109,13 +121,11 @@ class PortfolioAnalyzer:
             f"Languages: {list(repo.get('languages', {}).keys())}\n"
             f"Topics: {repo.get('topics')}\n"
         )
-        response = self.client.messages.create(
-            model=SUMMARY_MODEL,
-            max_tokens=100,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = "".join(block.text for block in response.content if block.type == "text").strip()
-        return text, True
+        try:
+            return self.client.summarize(prompt), True
+        except Exception as exc:
+            log.warning("AI summary failed for %s: %s", repo.get("name"), exc)
+            return self._fallback_summary(repo), False
 
     def analyze_portfolio(self, repos: list[dict[str, Any]]) -> dict[str, Any]:
         """Runs per-repo scoring + summaries, then computes cross-repo

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .client import GitHubClient
 from .analyzer import PortfolioAnalyzer
+from .providers import build_summary_client
 from .report import render_report
 
 app = typer.Typer()
@@ -66,6 +67,9 @@ def scan(
 def analyze(
     input: str = typer.Option("reports/portfolio.json", help="Path to portfolio.json from `gha scan`"),
     output: str = typer.Option("reports", help="Output directory"),
+    provider: str = typer.Option("anthropic", help="LLM provider for AI summaries: anthropic or openai"),
+    model: str = typer.Option(None, help="Override the provider's default summary model"),
+    base_url: str = typer.Option(None, envvar="OPENAI_BASE_URL", help="OpenAI-compatible endpoint, e.g. https://api.featherless.ai/v1"),
     anthropic_key: str = typer.Option(None, envvar="ANTHROPIC_API_KEY", help="Anthropic API key for AI summaries"),
 ):
     """Phase 2: Analysis - score repos, generate AI summaries, and build a chart-based HTML report."""
@@ -78,10 +82,17 @@ def analyze(
         portfolio = json.load(f)
     repos = portfolio["repositories"]
 
-    if not anthropic_key:
-        console.print("[yellow]No ANTHROPIC_API_KEY set - summaries will use a plain metadata fallback instead of AI.[/]")
+    try:
+        client = build_summary_client(
+            provider, model=model, base_url=base_url, anthropic_api_key=anthropic_key
+        )
+    except (ValueError, RuntimeError) as e:
+        console.print(f"[bold red]{e}[/]")
+        raise typer.Exit(code=1)
+    if client is None:
+        console.print(f"[yellow]No credential found for provider '{provider}' - summaries will use a plain metadata fallback instead of AI.[/]")
 
-    analyzer = PortfolioAnalyzer(anthropic_api_key=anthropic_key)
+    analyzer = PortfolioAnalyzer(client=client)
 
     output_dir = Path(output)
     output_dir.mkdir(parents=True, exist_ok=True)
