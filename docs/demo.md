@@ -30,7 +30,19 @@ pip install -e .
 pytest                                   # sanity: 20 passed
 
 export GITHUB_TOKEN=ghp_...              # version B only
-export ANTHROPIC_API_KEY=sk-ant-...      # optional, makes summaries real
+
+# Optional, makes summaries real. Either provider works:
+export ANTHROPIC_API_KEY=sk-ant-...
+# ...or any OpenAI-compatible endpoint (verified working):
+export FEATHERLESS_API_KEY=rc_...
+```
+
+With a key, add these flags to every `analyze` below — 12 repos takes about
+25 seconds:
+
+```bash
+--provider openai --base-url https://api.featherless.ai/v1 \
+--model google/gemma-4-26B-A4B-it
 ```
 
 Then, critically — **pre-run the scan**:
@@ -145,6 +157,11 @@ matter, what's broken in this one, and whether it does what it claims.
 - **Don't overclaim in the room.** The tool scores metadata, not code. Saying
   so out loud is what makes the next two tools sound necessary rather than
   redundant.
+- **Know which column is soft.** If someone asks how the summaries work, the
+  honest answer is that a repo with no description gets a summary the model
+  guessed from its name. Volunteer it before you're caught by it — in the
+  sample report, `scrape-lab` is exactly that case. Scores and notes are
+  computed from real metadata; the summary column is a convenience.
 
 ## Recording it
 

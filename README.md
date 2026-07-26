@@ -17,8 +17,8 @@ open reports/report.html
 ![Aletheia portfolio report — score, license coverage, staleness and language charts](docs/images/report-hero.png)
 
 <sub>Generated from `examples/sample-portfolio.json` (sample data, not a real
-account) — reproduce it in one command with the [demo](#demo-no-github-token-needed)
-below.</sub>
+account); summaries are real model output via `--provider openai`. Reproduce
+it in one command with the [demo](#demo-no-github-token-needed) below.</sub>
 
 ## The pipeline
 
@@ -132,11 +132,12 @@ gha analyze --input ~/audits/2026-07/portfolio.json --output ~/audits/2026-07
 # Anthropic summaries with a specific model
 gha analyze --model claude-haiku-4-5-20251001
 
-# Any OpenAI-compatible endpoint
+# Any OpenAI-compatible endpoint (this exact invocation is verified working)
 pip install -e ".[openai]"
+export FEATHERLESS_API_KEY=rc_...
 gha analyze --provider openai \
             --base-url https://api.featherless.ai/v1 \
-            --model meta-llama/Meta-Llama-3.1-8B-Instruct
+            --model google/gemma-4-26B-A4B-it
 
 # Force the no-AI path (deterministic, free, no network beyond the scan)
 env -u ANTHROPIC_API_KEY gha analyze
@@ -200,10 +201,20 @@ Stale repos: 4 | Archived: 1
 Report: reports/demo/report.html
 ```
 
-The demo runs with no LLM key, so `AI Summaries` reads `0` and every summary
-is the metadata fallback. Export `ANTHROPIC_API_KEY` and re-run to see the
-AI path (12 short calls). See [docs/demo.md](docs/demo.md) for a scripted
-walkthrough.
+That run uses no LLM key, so `AI Summaries` reads `0` and every summary is the
+metadata fallback. Add a key to get the AI path — 12 short calls, about 25
+seconds:
+
+```bash
+export FEATHERLESS_API_KEY=rc_...
+gha analyze --input examples/sample-portfolio.json --output reports/demo \
+            --provider openai \
+            --base-url https://api.featherless.ai/v1 \
+            --model google/gemma-4-26B-A4B-it
+```
+
+That is how the screenshots above were made. See [docs/demo.md](docs/demo.md)
+for a scripted walkthrough.
 
 ## What the report contains
 
@@ -250,8 +261,25 @@ Repos with no push in 180 days are flagged **stale**.
 Not yet implemented (do not rely on these): CI/CD or security analysis,
 merge/dedupe suggestions, action-plan generation, PDF export, and incremental
 (cache-based) scanning — the `--incremental` flag is currently a no-op.
-Summaries are generated from repo *metadata* (name, description, languages,
-topics), never from source code.
+
+### Read AI summaries as guesses, not findings
+
+Summaries are generated from repo **metadata only** — name, description,
+languages, topics. No source code is ever read. That has a consequence worth
+knowing before you quote a summary at anyone:
+
+> **When a repo has no description, the model infers one from the name and
+> still writes it in a confident voice.**
+
+In the sample report, `scrape-lab` has no description, no topics and no
+README input, and the summary reads *"provides a Python-based tool for web
+scraping and data extraction experiments."* That is a plausible guess from six
+characters of repo name, presented as fact. It may well be wrong.
+
+The scores and the notes column are computed from real metadata and are
+trustworthy. The summary column is a convenience. Cross-check it against the
+`No description` note in the same row — and if you need to know what a repo
+actually does, that is what the other two tools in the pipeline are for.
 
 ## Troubleshooting
 

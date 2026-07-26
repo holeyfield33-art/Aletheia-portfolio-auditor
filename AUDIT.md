@@ -208,9 +208,9 @@ $ .venv/bin/pytest -q          # without the [openai] extra
   previous audit: the sandbox proxy blocks `/user/repos` and `/users/*/repos`.
   Only error paths were exercised. This remains the one untested link in the
   chain and needs a real-token smoke test.
-- **AI summary generation against a live LLM API.** No `ANTHROPIC_API_KEY` /
-  `OPENAI_API_KEY` in this environment, so only the no-key fallback path ran.
-  The report's `AI Summaries` stat reads 0 in every artifact produced here.
+- **The Anthropic provider** specifically. The `openai` provider path is now
+  verified end to end (see below), but `AnthropicSummaryClient` still has no
+  live run behind it.
 - **Rate-limit and pagination behaviour** on an account with 100+ repos.
 
 ## Open findings (not fixed)
@@ -220,3 +220,41 @@ $ .venv/bin/pytest -q          # without the [openai] extra
 | 7 | P2 | `requests_cache.install_cache()` still runs at `client.py` import time, monkey-patching `requests` process-wide. Previous audit's finding #6 | Unchanged assessment: a design smell, not a correctness bug for the CLI. Moving it into `GitHubClient.__init__` changes caching semantics for any existing embedder |
 | 8 | P2 | `gha scan` writes `portfolio.json` non-atomically, so an interrupted scan still corrupts the file — `analyze` now reports it clearly (finding 2) but `scan` should write to a temp file and rename | Detection was the user-visible half; the atomic-write fix belongs with a broader `scan` resilience pass (resume, rate-limit backoff) |
 | 9 | P3 | `--incremental` remains an accepted no-op | Documented as a no-op in the README options table and the architecture doc rather than silently ignored |
+
+## Addendum — live LLM provider run (2026-07-26)
+
+The `openai` provider path, listed as unverified above, was subsequently
+exercised against a real OpenAI-compatible endpoint.
+
+```
+$ export FEATHERLESS_API_KEY=rc_...
+$ gha analyze --input examples/sample-portfolio.json --output <out> \
+              --provider openai \
+              --base-url https://api.featherless.ai/v1 \
+              --model google/gemma-4-26B-A4B-it
+Avg quality score: 70.0 | License coverage: 66.7%
+real  0m25.781s
+$ jq .insights.ai_summaries_generated <out>/analysis.json
+12
+```
+
+| Check | Result |
+|---|---|
+| `--provider openai` + `--base-url` + `--model` reach a third-party endpoint | ✅ 12/12 repos summarised, `summary_is_ai: true` throughout |
+| `FEATHERLESS_API_KEY` picked up without `OPENAI_API_KEY` set | ✅ |
+| Report `AI Summaries` stat reflects real calls only | ✅ reads 12, was 0 on the keyless run |
+| Throughput | 12 sequential calls in ~26s (~2.2s/repo); no batching or concurrency |
+| Report still network-free with AI summaries present | ✅ 0 failed requests, 4 charts, re-verified in headless Chromium |
+| API key leakage into `analysis.json` / `report.html` / repo files | ✅ none (`grep -rl` for the key across all outputs and tracked files: no hits) |
+
+Screenshots in `docs/images/` were regenerated from this run, so they show
+real model output rather than metadata fallbacks.
+
+### New finding
+
+| # | Severity | Finding | Status |
+|---|---|---|---|
+| 10 | P2 — misleading output | **Summaries for repos with no description are confabulated from the repo name and presented in the same confident voice as grounded ones.** `scrape-lab` (no description, no topics, languages `{"Python": 42000}`) got *"provides a Python-based tool for web scraping and data extraction experiments"* — inferred entirely from the eleven-character repo name. `webgl-toys` behaved the same way. The report gives the reader no signal that one summary is grounded in a real description and another is a guess | Documented, not code-fixed. `summary_is_ai` distinguishes AI from fallback but **not** grounded-AI from inferred-AI. README now carries an explicit "read AI summaries as guesses, not findings" section pointing readers at the `No description` note in the same row. A real fix would either pass the description's absence to the model as a constraint, or flag inferred summaries in the report UI — both are product decisions beyond this audit |
+
+This matters more here than it would elsewhere: the project's stated premise is
+"proof, not vibes", and this is the one column in the report that is vibes.
