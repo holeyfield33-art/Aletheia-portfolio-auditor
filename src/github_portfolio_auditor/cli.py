@@ -21,16 +21,24 @@ def scan(
 ):
     """Phase 1: Discovery - Scan GitHub portfolio and generate reports."""
     console.print(f"[bold green]Starting Portfolio Discovery for {username or 'authenticated user'}[/]")
-    
-    client = GitHubClient(token)
-    
+
+    try:
+        client = GitHubClient(token)
+    except Exception as e:
+        console.print(f"[bold red]Failed to authenticate with GitHub: {e}[/]")
+        raise typer.Exit(code=1)
+
     output_dir = Path(output)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
         task = progress.add_task("Fetching repositories...", total=None)
-        
-        repos = client.get_repositories(username)
+
+        try:
+            repos = client.get_repositories(username)
+        except Exception as e:
+            console.print(f"[bold red]Failed to fetch repositories: {e}[/]")
+            raise typer.Exit(code=1)
         progress.update(task, completed=True)
     
     console.print(f"Found {len(repos)} repositories.")
