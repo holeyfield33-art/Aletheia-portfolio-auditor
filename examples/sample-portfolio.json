@@ -1,0 +1,214 @@
+{
+  "repositories": [
+    {
+      "name": "octo-dev/quill-editor",
+      "stars": 412,
+      "forks": 38,
+      "languages": {
+        "TypeScript": 184000,
+        "CSS": 21000
+      },
+      "topics": [
+        "editor",
+        "crdt",
+        "realtime"
+      ],
+      "license": "MIT License",
+      "last_commit": "2026-07-23T00:00:00+00:00",
+      "contributors_count": 7,
+      "releases_count": 12,
+      "is_archived": false,
+      "description": "Collaborative markdown editor with live presence"
+    },
+    {
+      "name": "octo-dev/tinyvec",
+      "stars": 268,
+      "forks": 17,
+      "languages": {
+        "Rust": 96000
+      },
+      "topics": [
+        "vector-search",
+        "embeddings"
+      ],
+      "license": "Apache License 2.0",
+      "last_commit": "2026-07-17T00:00:00+00:00",
+      "contributors_count": 3,
+      "releases_count": 5,
+      "is_archived": false,
+      "description": "Single-file vector index for embedded search"
+    },
+    {
+      "name": "octo-dev/pipeline-kit",
+      "stars": 155,
+      "forks": 22,
+      "languages": {
+        "Python": 31000,
+        "Shell": 8000
+      },
+      "topics": [
+        "ci",
+        "github-actions"
+      ],
+      "license": "MIT License",
+      "last_commit": "2026-07-12T00:00:00+00:00",
+      "contributors_count": 4,
+      "releases_count": 8,
+      "is_archived": false,
+      "description": "Reusable GitHub Actions for Python services"
+    },
+    {
+      "name": "octo-dev/lumen-ui",
+      "stars": 890,
+      "forks": 74,
+      "languages": {
+        "TypeScript": 142000,
+        "SCSS": 34000
+      },
+      "topics": [
+        "react",
+        "design-system",
+        "a11y"
+      ],
+      "license": "MIT License",
+      "last_commit": "2026-07-05T00:00:00+00:00",
+      "contributors_count": 11,
+      "releases_count": 19,
+      "is_archived": false,
+      "description": "Accessible React component library"
+    },
+    {
+      "name": "octo-dev/ledgerd",
+      "stars": 97,
+      "forks": 6,
+      "languages": {
+        "Go": 118000
+      },
+      "topics": [
+        "database",
+        "wal"
+      ],
+      "license": "Apache License 2.0",
+      "last_commit": "2026-06-29T00:00:00+00:00",
+      "contributors_count": 2,
+      "releases_count": 3,
+      "is_archived": false,
+      "description": "Append-only ledger daemon with WAL replay"
+    },
+    {
+      "name": "octo-dev/scrape-lab",
+      "stars": 12,
+      "forks": 1,
+      "languages": {
+        "Python": 42000
+      },
+      "topics": [],
+      "license": null,
+      "last_commit": "2026-05-23T00:00:00+00:00",
+      "contributors_count": 1,
+      "releases_count": 0,
+      "is_archived": false,
+      "description": null
+    },
+    {
+      "name": "octo-dev/dotfiles",
+      "stars": 4,
+      "forks": 0,
+      "languages": {
+        "Shell": 19000,
+        "Lua": 7000
+      },
+      "topics": [
+        "dotfiles"
+      ],
+      "license": null,
+      "last_commit": "2026-05-29T00:00:00+00:00",
+      "contributors_count": 1,
+      "releases_count": 0,
+      "is_archived": false,
+      "description": "Personal shell, editor and tmux configuration"
+    },
+    {
+      "name": "octo-dev/notes-api",
+      "stars": 8,
+      "forks": 2,
+      "languages": {
+        "Python": 27000
+      },
+      "topics": [],
+      "license": "MIT License",
+      "last_commit": "2025-12-26T00:00:00+00:00",
+      "contributors_count": 1,
+      "releases_count": 0,
+      "is_archived": false,
+      "description": "REST API for a note-taking side project"
+    },
+    {
+      "name": "octo-dev/webgl-toys",
+      "stars": 23,
+      "forks": 3,
+      "languages": {
+        "JavaScript": 56000,
+        "GLSL": 9000
+      },
+      "topics": [],
+      "license": null,
+      "last_commit": "2025-08-19T00:00:00+00:00",
+      "contributors_count": 1,
+      "releases_count": 0,
+      "is_archived": false,
+      "description": null
+    },
+    {
+      "name": "octo-dev/rusty-shell",
+      "stars": 31,
+      "forks": 2,
+      "languages": {
+        "Rust": 38000
+      },
+      "topics": [
+        "learning"
+      ],
+      "license": "MIT License",
+      "last_commit": "2025-10-01T00:00:00+00:00",
+      "contributors_count": 1,
+      "releases_count": 1,
+      "is_archived": false,
+      "description": "Toy POSIX shell written while learning Rust"
+    },
+    {
+      "name": "octo-dev/legacy-crm",
+      "stars": 19,
+      "forks": 4,
+      "languages": {
+        "TypeScript": 73000
+      },
+      "topics": [
+        "deprecated"
+      ],
+      "license": "MIT License",
+      "last_commit": "2024-11-28T00:00:00+00:00",
+      "contributors_count": 3,
+      "releases_count": 2,
+      "is_archived": true,
+      "description": "Deprecated CRM prototype - superseded by lumen-ui"
+    },
+    {
+      "name": "octo-dev/bench-harness",
+      "stars": 14,
+      "forks": 1,
+      "languages": {
+        "Go": 22000
+      },
+      "topics": [
+        "benchmark"
+      ],
+      "license": null,
+      "last_commit": "2026-03-17T00:00:00+00:00",
+      "contributors_count": 2,
+      "releases_count": 0,
+      "is_archived": false,
+      "description": "Micro-benchmark harness for the ledgerd storage layer"
+    }
+  ]
+}

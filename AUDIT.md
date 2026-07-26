@@ -122,3 +122,101 @@ survives Phase 2 attacks without crashing or rendering unescaped content ·
 all identified P0/P1s fixed with passing regression tests · P2/P3 logged
 above with real repro commands. No P0 (secrets/injection/auth/data-loss)
 findings were found. Stopping here per directive — not hunting further P3s.
+
+---
+
+# End-to-End Audit — 2026-07-26
+
+Date: 2026-07-26
+Base commit audited: `987987f`
+Branch: `claude/e2e-audit-docs-update-qo8zkl`
+Environment: Python 3.11.15, fresh `.venv`, `pip install -e ".[dev]"`
+Scope: full end-to-end run of every documented command, plus a docs pass.
+
+## Phase 0 — Baseline
+
+```
+$ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # clean, succeeded
+$ .venv/bin/pytest -q                                          # 1 FAILED, 11 passed
+$ gha --help / scan --help / analyze --help                    # all exit 0
+$ aletheia --help / check --help / verify --help               # all exit 0
+```
+
+**The documented dev flow was red on a clean checkout** — see finding 1.
+
+## Phase 1 — Every documented command, run for real
+
+| Command | Result |
+|---|---|
+| `gha scan` (valid token, live) | **Unverified** — this session's proxy rejects `GET /user/repos` with a 403 (`sessions are bound to their configured repositories`). Error path handled cleanly; happy path still untested against live GitHub. |
+| `gha scan --token badtoken123` | Clean one-line error, exit 1 ✅ |
+| `gha scan --username holeyfield33-art` | Clean one-line error, exit 1 (same proxy block) ✅ |
+| `gha analyze` (missing input) | `No portfolio data found ... Run 'gha scan' first`, exit 1 ✅ |
+| `gha analyze` (truncated JSON) | Raw `JSONDecodeError` traceback → **finding 2** |
+| `gha analyze` (JSON without `repositories`) | Raw `KeyError` traceback → **finding 3** |
+| `gha analyze` (empty portfolio) | Renders a 0/0/0 report, exit 0 ✅ |
+| `gha analyze --provider grok` | `unknown provider 'grok' ...`, exit 1 ✅ |
+| `gha analyze` (12-repo sample portfolio) | avg 70.0, coverage 66.7%, 4 stale, 1 archived, exit 0 ✅ |
+| `aletheia check .` (no vibe-check) | Install instructions, exit 2 ✅ |
+| `aletheia verify <url>` (no liedetector) | Install instructions, exit 2 ✅ |
+
+## Phase 2 — Report rendering, verified in a real browser
+
+Rendered `report.html` was loaded in headless Chromium with request
+interception, which surfaced finding 4 directly: two requests failed and the
+charts did not draw.
+
+## Fixed
+
+| # | Severity | Finding | Fix | Regression test |
+|---|---|---|---|---|
+| 1 | P1 — documented flow is broken | `pip install -e ".[dev]" && pytest` (the README's Development section) **fails on a clean checkout**: `test_build_summary_client_openai_reads_featherless_key_and_base_url` needs the `openai` SDK, which lives in the separate `[openai]` extra | `pytest.importorskip("openai")` in that test | Verified both ways: `[dev]` → 19 passed, 1 skipped; `[dev,openai]` → 20 passed |
+| 2 | P2→fixed | `gha analyze` dumps a raw `JSONDecodeError` traceback on a truncated `portfolio.json` (realistic: `scan` writes non-atomically, so any interrupted scan produces one). Was logged as open finding #4 in the previous audit | `cli.py`: catch `JSONDecodeError`, print the file, the parse error, and "re-run `gha scan`", exit 1 | `test_analyze_rejects_truncated_json_without_traceback` |
+| 3 | P2→fixed | `gha analyze` dumps a raw `KeyError: 'repositories'` on valid JSON that isn't a portfolio file. Previous audit's open finding #5 | `cli.py`: validate the envelope (dict with a `repositories` list) before use, exit 1 with an actionable message | `test_analyze_rejects_json_without_repositories_key`, `test_analyze_rejects_repositories_of_wrong_type` |
+| 4 | P1 — false README claim | README claimed a "**self-contained** HTML dashboard report". It was not: the template pulled Chart.js from cdnjs and webfonts from Google Fonts. Offline, air-gapped, or emailed-to-someone-else, **every chart silently failed to render** — the report degraded to a bare table with no indication anything was missing. Confirmed in headless Chromium: 2 failed requests, 0 charts drawn | Vendored Chart.js v4.4.4 (MIT) into `templates/vendor/` and inlined it into every report; replaced the webfont link with system font stacks; added `templates/vendor/*.js` to `package-data` | `test_report_has_no_external_resource_references` asserts zero `http(s)://` `src`/`href` in the output. Re-verified in the browser: **0 failed requests, 4 charts drawn** |
+| 5 | P3 — presentation | Every chart card stretched to the height of the tallest (the doughnut), leaving ~40% dead space in the three bar charts | Fixed-height `.chart-wrap` + `maintainAspectRatio: false`; 2×2 grid at `minmax(420px, 1fr)`; integer ticks on the language axis; `overflow-x` wrapper on the table for narrow screens | Visual, captured in `docs/images/` |
+| 6 | P3 — docs | `docs/architecture.md` was a one-line stub pointing at a spec not in the repo. Previous audit's open finding #8 | Rewritten: data-flow diagram, module table, the `portfolio.json` contract, four design decisions, and a known-rough-edges list | — |
+
+Also added, to close the "no reproducible demo" gap: `examples/sample-portfolio.json`
+(12 synthetic repos exercising every scoring branch and every report badge),
+`examples/README.md`, `docs/demo.md`, and `docs/images/` screenshots generated
+from that dataset.
+
+## Security re-check
+
+- `templates/vendor/chart.umd.min.js` is inlined via `{{ chartjs|safe }}`. It
+  is a vendored build artifact, not user data. Verified it contains zero
+  `</script` sequences, so it cannot break out of the `<script>` block.
+- Re-confirmed the previous audit's XSS finding still holds after the template
+  rewrite: hostile repo names/descriptions (`</script><img src=x onerror=...>`,
+  `<script>alert('xss')</script>`) are escaped in both the HTML and the
+  `|tojson` data arrays — now asserted by
+  `test_report_escapes_hostile_repo_metadata` rather than checked by hand.
+
+## Final state
+
+```
+$ .venv/bin/pytest -q
+20 passed
+$ .venv/bin/pytest -q          # without the [openai] extra
+19 passed, 1 skipped
+```
+
+## Still unverified
+
+- **`gha scan` against live GitHub with a valid token.** Same limitation as the
+  previous audit: the sandbox proxy blocks `/user/repos` and `/users/*/repos`.
+  Only error paths were exercised. This remains the one untested link in the
+  chain and needs a real-token smoke test.
+- **AI summary generation against a live LLM API.** No `ANTHROPIC_API_KEY` /
+  `OPENAI_API_KEY` in this environment, so only the no-key fallback path ran.
+  The report's `AI Summaries` stat reads 0 in every artifact produced here.
+- **Rate-limit and pagination behaviour** on an account with 100+ repos.
+
+## Open findings (not fixed)
+
+| # | Severity | Finding | Why not fixed |
+|---|---|---|---|
+| 7 | P2 | `requests_cache.install_cache()` still runs at `client.py` import time, monkey-patching `requests` process-wide. Previous audit's finding #6 | Unchanged assessment: a design smell, not a correctness bug for the CLI. Moving it into `GitHubClient.__init__` changes caching semantics for any existing embedder |
+| 8 | P2 | `gha scan` writes `portfolio.json` non-atomically, so an interrupted scan still corrupts the file — `analyze` now reports it clearly (finding 2) but `scan` should write to a temp file and rename | Detection was the user-visible half; the atomic-write fix belongs with a broader `scan` resilience pass (resume, rate-limit backoff) |
+| 9 | P3 | `--incremental` remains an accepted no-op | Documented as a no-op in the README options table and the architecture doc rather than silently ignored |

@@ -9,6 +9,9 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
+# Chart.js is vendored (MIT, v4.4.4) and inlined into every report, so a
+# generated report.html is a genuinely single, offline-viewable file.
+CHARTJS_PATH = TEMPLATE_DIR / "vendor" / "chart.umd.min.js"
 
 
 def _status_breakdown(repos: list[dict[str, Any]]) -> tuple[list[str], list[int]]:
@@ -44,6 +47,7 @@ def render_report(analysis: dict[str, Any], output_path: Path) -> Path:
     template = env.get_template("report.html.j2")
 
     html = template.render(
+        chartjs=CHARTJS_PATH.read_text(encoding="utf-8"),
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         repositories=repos_sorted,
         insights=insights,

@@ -78,8 +78,25 @@ def analyze(
         console.print(f"[bold red]No portfolio data found at {input_path}.[/] Run `gha scan` first.")
         raise typer.Exit(code=1)
 
-    with open(input_path) as f:
-        portfolio = json.load(f)
+    # `gha scan` writes this file non-atomically, so a killed scan leaves valid
+    # JSON truncated mid-array. Fail with a one-line "re-run scan" message
+    # instead of a raw JSONDecodeError/KeyError traceback.
+    try:
+        with open(input_path) as f:
+            portfolio = json.load(f)
+    except json.JSONDecodeError as e:
+        console.print(
+            f"[bold red]{input_path} is not valid JSON[/] ({e}).\n"
+            "It was likely truncated by an interrupted scan - re-run `gha scan`."
+        )
+        raise typer.Exit(code=1)
+
+    if not isinstance(portfolio, dict) or not isinstance(portfolio.get("repositories"), list):
+        console.print(
+            f"[bold red]{input_path} is not a portfolio file.[/] "
+            'Expected a JSON object with a "repositories" list - re-run `gha scan`.'
+        )
+        raise typer.Exit(code=1)
     repos = portfolio["repositories"]
 
     try:

@@ -6,3 +6,6 @@ github_cache.sqlite
 reports/
 *.log
 .venv/
+build/
+dist/
+venv/
