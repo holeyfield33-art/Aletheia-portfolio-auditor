@@ -28,4 +28,4 @@ aletheia = "github_portfolio_auditor.aletheia:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-github_portfolio_auditor = ["templates/*.html.j2"]
+github_portfolio_auditor = ["templates/*.html.j2", "templates/vendor/*.js"]

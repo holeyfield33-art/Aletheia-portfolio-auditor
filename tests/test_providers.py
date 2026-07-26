@@ -63,6 +63,9 @@ def test_build_summary_client_openai_without_key_returns_none(monkeypatch):
 
 
 def test_build_summary_client_openai_reads_featherless_key_and_base_url(monkeypatch):
+    # The openai SDK ships in the optional `[openai]` extra, so `pip install -e
+    # ".[dev]" && pytest` (the documented dev flow) must stay green without it.
+    pytest.importorskip("openai")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setenv("FEATHERLESS_API_KEY", "fk-test")
     monkeypatch.setenv("OPENAI_BASE_URL", "https://api.featherless.ai/v1")

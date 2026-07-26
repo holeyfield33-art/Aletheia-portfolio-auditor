@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>Portfolio Audit - {{ generated_at }}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Chart.js v4.4.4 (MIT) is inlined below so this report is a single file that
+     renders with no network access - email it, archive it, open it offline. -->
+<script>{{ chartjs|safe }}</script>
 <style>
   :root {
     --bg: #0b0d10;
@@ -16,8 +17,9 @@
     --accent: #7cf29c;
     --accent-2: #ff9f6b;
     --danger: #ff6b7a;
-    --font-mono: 'JetBrains Mono', monospace;
-    --font-display: 'Space Grotesk', sans-serif;
+    /* System stacks only - no webfont fetch, so the report needs no network. */
+    --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+    --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
@@ -62,7 +64,7 @@
   .stat .label { color: var(--text-dim); font-size: 12px; margin-top: 4px; }
   .charts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
     gap: 18px;
     margin-bottom: 32px;
   }
@@ -73,6 +75,10 @@
     padding: 18px;
   }
   .chart-card h3 { margin: 0 0 12px; font-size: 14px; color: var(--text-dim); font-weight: 600; }
+  /* Fixed-height wrapper + maintainAspectRatio:false keeps every card the same
+     size, instead of the grid stretching short charts to the doughnut's height. */
+  .chart-wrap { position: relative; height: 260px; }
+  .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--panel-border); }
   th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
@@ -111,14 +117,15 @@
   </div>
 
   <div class="charts">
-    <div class="chart-card"><h3>Quality Score by Repo</h3><canvas id="scoreChart"></canvas></div>
-    <div class="chart-card"><h3>Repo Status</h3><canvas id="statusChart"></canvas></div>
-    <div class="chart-card"><h3>Dominant Language</h3><canvas id="langChart"></canvas></div>
-    <div class="chart-card"><h3>Stars by Repo (Top 10)</h3><canvas id="starsChart"></canvas></div>
+    <div class="chart-card"><h3>Quality Score by Repo</h3><div class="chart-wrap"><canvas id="scoreChart"></canvas></div></div>
+    <div class="chart-card"><h3>Repo Status</h3><div class="chart-wrap"><canvas id="statusChart"></canvas></div></div>
+    <div class="chart-card"><h3>Dominant Language</h3><div class="chart-wrap"><canvas id="langChart"></canvas></div></div>
+    <div class="chart-card"><h3>Stars by Repo (Top 10)</h3><div class="chart-wrap"><canvas id="starsChart"></canvas></div></div>
   </div>
 
   <section>
     <h2>Repositories</h2>
+    <div class="table-wrap">
     <table>
       <thead>
         <tr><th>Repo</th><th>Score</th><th>Stars</th><th>Summary</th><th>Notes</th></tr>
@@ -139,12 +146,13 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
   </section>
 </div>
 
 <script>
   Chart.defaults.color = '#8b93a1';
-  Chart.defaults.font.family = "'JetBrains Mono', monospace";
+  Chart.defaults.font.family = "'JetBrains Mono', Menlo, Consolas, monospace";
   Chart.defaults.borderColor = '#262b33';
 
   const repoNames = {{ repo_names|tojson }};
@@ -156,28 +164,33 @@
   const topStarNames = {{ top_star_names|tojson }};
   const topStarValues = {{ top_star_values|tojson }};
 
+  // Every card is a fixed-height .chart-wrap, so the charts fill it rather
+  // than keeping their own aspect ratio and leaving dead space.
+  const fill = { responsive: true, maintainAspectRatio: false };
+  const noLegend = { ...fill, plugins: { legend: { display: false } } };
+
   new Chart(document.getElementById('scoreChart'), {
     type: 'bar',
     data: { labels: repoNames, datasets: [{ data: repoScores, backgroundColor: '#7cf29c', borderRadius: 4 }] },
-    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+    options: { ...noLegend, scales: { y: { beginAtZero: true, max: 100 } } }
   });
 
   new Chart(document.getElementById('statusChart'), {
     type: 'doughnut',
     data: { labels: statusLabels, datasets: [{ data: statusCounts, backgroundColor: ['#7cf29c', '#ff9f6b', '#ff6b7a'] }] },
-    options: { plugins: { legend: { position: 'bottom' } } }
+    options: { ...fill, plugins: { legend: { position: 'bottom' } } }
   });
 
   new Chart(document.getElementById('langChart'), {
     type: 'bar',
     data: { labels: langLabels, datasets: [{ data: langCounts, backgroundColor: '#ff9f6b', borderRadius: 4 }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+    options: { ...noLegend, indexAxis: 'y', scales: { x: { ticks: { precision: 0 } } } }
   });
 
   new Chart(document.getElementById('starsChart'), {
     type: 'bar',
     data: { labels: topStarNames, datasets: [{ data: topStarValues, backgroundColor: '#7cf29c', borderRadius: 4 }] },
-    options: { plugins: { legend: { display: false } } }
+    options: noLegend
   });
 </script>
 </body>
